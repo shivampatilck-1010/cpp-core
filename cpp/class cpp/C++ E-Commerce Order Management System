@@ -1,0 +1,186 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+// --- Enums ---
+enum Category { ELECTRONICS, CLOTHING, GROCERY, HOME };
+enum OrderStatus { PENDING, CONFIRMED, DELIVERED, CANCELLED };
+enum PaymentStatus { UNPAID, PAID, FAILED };
+enum PaymentMethod { CREDIT_CARD, UPI, CASH };
+
+// --- Union ---
+union PaymentDetails {
+    int last4Digits;
+    char upiId[50];
+};
+
+// --- Product Class ---
+class Product {
+private:
+    int productId;
+    string name;
+    double price;
+    int stock;
+    Category category;
+
+public:
+    Product(int id, string n, double p, int s, Category c) 
+        : productId(id), name(n), price(p), stock(s), category(c) {}
+
+    int getProductId() const { return productId; }
+    double getPrice() const { return price; }
+    int getStock() const { return stock; }
+
+    void displayProduct() const {
+        cout << "Product ID: " << productId << " | Name: " << name 
+             << " | Price: $" << price << " | Stock: " << stock << "\n";
+    }
+
+    void updateStock(int quantity) {
+        stock += quantity;
+    }
+
+    bool checkAvailability(int requestedQty) const {
+        return stock >= requestedQty;
+    }
+};
+
+// --- Customer Class ---
+class Customer {
+private:
+    int customerId;
+    string name;
+    string email;
+    string phone;
+    string address;
+
+public:
+    Customer(int id, string n, string e, string p, string a)
+        : customerId(id), name(n), email(e), phone(p), address(a) {}
+
+    int getCustomerId() const { return customerId; }
+
+    void displayCustomer() const {
+        cout << "Customer ID: " << customerId << " | Name: " << name 
+             << " | Email: " << email << "\n";
+    }
+
+    void updateDetails(string newEmail, string newPhone, string newAddress) {
+        email = newEmail;
+        phone = newPhone;
+        address = newAddress;
+        cout << "Customer details updated successfully.\n";
+    }
+};
+
+// --- Order Struct ---
+struct Order {
+    int orderId;
+    int customerId;
+    double totalAmount;
+    OrderStatus status;
+    PaymentStatus payStatus;
+    PaymentMethod payMethod;
+    PaymentDetails payInfo;
+
+    Order(int oid, int cid, double amount) {
+        orderId = oid;
+        customerId = cid;
+        totalAmount = amount;
+        status = PENDING;
+        payStatus = UNPAID;
+    }
+
+    void displayOrder() const {
+        cout << "Order ID: " << orderId << " | Customer ID: " << customerId 
+             << " | Amount: $" << totalAmount 
+             << " | Status: " << status << " | Pay Status: " << payStatus << "\n";
+    }
+
+    void processPayment(PaymentMethod method, const string& upi = "", int cc = 0) {
+        if (status == CANCELLED) {
+            cout << "Validation Error: Cannot process payment for a cancelled order.\n";
+            return;
+        }
+
+        payMethod = method;
+        if (method == UPI) {
+            strncpy(payInfo.upiId, upi.c_str(), sizeof(payInfo.upiId) - 1);
+            payInfo.upiId[sizeof(payInfo.upiId) - 1] = '\0';
+        } else if (method == CREDIT_CARD) {
+            payInfo.last4Digits = cc;
+        }
+        
+        // Simulating successful payment for demonstration
+        payStatus = PAID;
+        cout << "Payment processed successfully.\n";
+    }
+
+    void confirmOrder() {
+        if (payStatus == FAILED || payStatus == UNPAID) {
+            cout << "Validation Error: Cannot confirm order. Payment has not been successfully made.\n";
+            return;
+        }
+        status = CONFIRMED;
+        cout << "Order confirmed.\n";
+    }
+
+    void cancelOrder() {
+        if (status == DELIVERED) {
+            cout << "Validation Error: Cannot cancel an order that has already been delivered.\n";
+            return;
+        }
+        status = CANCELLED;
+        cout << "Order cancelled successfully.\n";
+    }
+};
+
+// --- Validation Demonstration ---
+int main() {
+    // Initialize Data
+    Product laptop(101, "Gaming Laptop", 1200.00, 5, ELECTRONICS);
+    Customer alice(1, "Alice Smith", "alice@example.com", "555-1234", "123 Main St");
+    
+    cout << "--- E-Commerce System Initialized ---\n\n";
+
+    // Scenario 1: Product out of stock
+    cout << "Test 1: Ordering Out of Stock Quantity\n";
+    if (!laptop.checkAvailability(10)) {
+        cout << "Validation Error: Product out of stock or insufficient quantity.\n";
+    }
+
+    // Scenario 2: Invalid product/customer ID
+    cout << "\nTest 2: Invalid Customer ID lookup\n";
+    int searchId = 99;
+    if (alice.getCustomerId() != searchId) {
+        cout << "Validation Error: Customer ID " << searchId << " not found.\n";
+    }
+
+    // Scenario 3: Cancelling a delivered order
+    cout << "\nTest 3: Cancelling a delivered order\n";
+    Order order1(501, 1, 1200.00);
+    order1.status = DELIVERED; // Manually setting to delivered for test
+    order1.cancelOrder();
+
+    // Scenario 4: Payment for a cancelled order
+    cout << "\nTest 4: Payment for a cancelled order\n";
+    Order order2(502, 1, 50.00);
+    order2.status = CANCELLED;
+    order2.processPayment(UPI, "alice@upi");
+
+    // Scenario 5: Confirming an order with failed payment
+    cout << "\nTest 5: Confirming order with failed payment\n";
+    Order order3(503, 1, 300.00);
+    order3.payStatus = FAILED;
+    order3.confirmOrder();
+
+    // Valid Flow Demonstration
+    cout << "\n--- Valid Order Flow ---\n";
+    Order validOrder(504, 1, laptop.getPrice());
+    laptop.updateStock(-1); // Reduce stock
+    validOrder.processPayment(CREDIT_CARD, "", 4321);
+    validOrder.confirmOrder();
+    validOrder.displayOrder();
+
+    return 0;
+}
